@@ -76,10 +76,7 @@ int main(int argc, char * argv[]){
 			}
 
 			//Server receiving the length of the file in a short int as well as the file name
-			//Server checking if the file exists and sending back the length of the file as 32 bit in
-			//Server computes MD5 hash of the file and sends it to client as a 16-byte string. 
-			//Server sends the file to client. 
-
+			//
 		}else if(strcmp("UPL", buf) == 0){
 
 		}else if(strcmp("LIS", buf) == 0){
