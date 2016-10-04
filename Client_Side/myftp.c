@@ -15,7 +15,9 @@ int main(int argc, char * argv[]){
 	int s;
 	int len;
 	int server_port;
-
+	char command[MAX_LINE];
+	char operation[3];
+	char file_name[MAX_LINE];
 	if (argc==3) {
 		host = argv[1];
 		server_port = atoi(argv[2]);
@@ -56,11 +58,74 @@ int main(int argc, char * argv[]){
 	while (fgets(buf, sizeof(buf), stdin)) {
 		buf[MAX_LINE-1] = '\0';
 		
+		printf("Please enter an operation: ");   // PSchurr prompt user input
+		fgets(command, sizeof(command), stdin);
+		
+		memcpy(operation,&command[0],3);
+		operation[3]='\0';
+		len=strlen(operation) +1;
+		if(strcmp("REQ", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+			perror("client send error!"); 
+			exit(1);	
+			}	
+		
+			// recvfrom (query for name)
+			// send length of filename and filename
+			// rec 32-bit file length
+			// decode 32 length
+			// if -1, break
+			// rec md5hash and store
+			// receive file and save
+			// compute hash
+			// notify user
+			// break
+
+
+		} else if( strcmp("UPL", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);	
+			}	
+		} else if (strcmp("MKD", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);
+			}	
+		} else if (strcmp("RMD", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);
+			}	
+		} else if (strcmp("CHD", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);
+			}	
+		} else if (strcmp("LIS", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);	
+			}	
+		} else if (strcmp("XIT", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);
+			}	
+		} else if (strcmp("DEL", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);	
+			}	
+		}
+		
+	
 		if (!strncmp(buf, "Exit",4)){
  			printf("Good Bye!\n");
  			break;
 		}
-
+		
+		
 		len = strlen(buf) + 1;
  		if(send(s, buf, len, 0)==-1){
 			perror("client send error!"); 
