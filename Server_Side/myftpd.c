@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <mhash.h>
 #define MAX_PENDING 5
 #define MAX_COMMAND 256
 #define MAX_FILE_MESSAGE 512
@@ -16,6 +17,8 @@ int main(int argc, char * argv[]){
 	int s, new_s1, new_s2, new_s3;
 	int opt;
 	int server_port;
+	MHASH td;
+	FILE * fp;
 	
 	//Input Arugment Error Checking
 	if(argc == 2){
@@ -51,33 +54,116 @@ int main(int argc, char * argv[]){
 		exit(1);
 	}
 	printf("Welcome to the TCP Server\n");
-
+	printf("Waiting for client connection. \n");
 	//Waiting for the connection and then acting
+	if((new_s1 = accept(s,(struct sockaddr *)&sin, &len))<0){ //Moved outside to wait for initial connection
+                perror("Server Connection Error!");
+                exit(1);
+        }
+	int ret = -4;
 	while(1){
-		if((new_s1 = accept(s,(struct sockaddr *)&sin, &len))<0){
-			perror("Server Received Error!");
+		printf("Prompting for client command.\n");
+		ret = recv(new_s1, buf, MAX_COMMAND, 0);
+		if (ret == 0){	//Ret == 0 if client has closed connection
+			printf("Waiting for client connection.\n");
+			if((new_s1 = accept(s,(struct sockaddr *)&sin, &len))<0){
+				perror("Server Connection Error!");
+				exit(1);
+			}
+		}
+		else if(ret < 0){
+			perror("Server receive error: Error receiving command!");
 			exit(1);
 		}
-
+	
+		len = strlen(buf); 
 		if(len==0) break;
 
 		if(strcmp("REQ", buf) == 0){
+			// I REMOVED THE CURRENT SEND AND ACCEPT BECAUSE THE ASSIGNMENT HAS BEEN UPDATED (SEE PIAZZA) AND ACCEPT IS ONLY FOR ACCEPTING CONNECTIONS)
 			//Sending a prompt back to the client to enter a file name for the request
-			char *file_message = "Please enter the name of the file that you would like to request";
-			if(send(s, file_message, sizeof(file_message), 0)==-1){ 
-				perror("server send file prompt error!"); 
-				exit(1);
-			}
+			//char *file_message = "Please enter the name of the file that you would like to request";
+			//if(send(s, file_message, sizeof(file_message), 0)==-1){ 
+			//	perror("server send file prompt error!"); 
+			//	exit(1);
+			//}
  
 			//accepting the name of the file
-			if((new_s2 = accept(s,(struct sockaddr *)&sin, &len))<0){
-				perror("Server Received Error!");
+			//if((new_s2 = accept(s,(struct sockaddr *)&sin, &len))<0){
+			//	perror("Server Received Error!");
+			//	exit(1);
+			//}
+			char name_len[10];
+			//Server receiving the length of the file in a short int as well as the file name
+			ret = recv(new_s1, name_len, 10,0);
+			if(ret == 0) continue; // Client has closed connection continue
+			else if(ret < 0){
+				perror("server receive error: Error receiving file name length!");
 				exit(1);
 			}
+			int l = atoi(name_len);
+			char file_name[l];
+                        ret = recv(new_s1, file_name, l,0);
+                        if(ret == 0) continue; // Client has closed connection continue
+                        else if(ret < 0){
+                                perror("server receive error: Error receiving file name!");
+                                exit(1);
+                        }
+			fp = fopen(file_name, "r");
+			if (fp == NULL){
+				ret = send(new_s1, "-1", 2,0);
+			//	if(errno == SIGPIPE){//Client has closed connection
+			//		continue;
+			//	}
+				if(ret == -1){
+					perror("server send error: Error sending file size");
+			//		exit(1);
+				}
 
-			//Server receiving the length of the file in a short int as well as the file name
-			//Server checking if the file exists and sending back the length of the file as 32 bit in
+				continue;
+			}
+			fseek(fp, 0L, SEEK_END);
+			int size = ftell(fp);
+			rewind(fp);
+			char file_size[10];
+			snprintf(file_size, 10, "%d", size);
+			ret = send(new_s1, file_size, 10, 0);
+                        //if(errno == SIGPIPE){//Client has closed connection
+                          //      continue;
+                        //}
+                        if(ret == -1){
+                                perror("server send error: Error sending file size");
+                                //exit(1);
+                                continue;
+                        }
 			//Server computes MD5 hash of the file and sends it to client as a 16-byte string. 
+			unsigned char *hash;
+			char content[size];
+			fread(content, sizeof(char),size,fp);
+			fclose(fp);
+			td = mhash_init(MHASH_MD5);
+                        if (td == MHASH_FAILED) return 1;
+                        mhash(td,&content , 1);
+			hash = mhash_end(td);
+			len = strlen(hash);
+                        ret = send(new_s1, hash, 16, 0);
+                        //if(errno == SIGPIPE){//Client has closed connection
+                          //      continue;
+                        //}
+                        if(ret == -1){
+                                perror("server send error: Error sending hash");
+                        //        exit(1);
+                        	continue;
+                        }
+                        ret = send(new_s1, content, size, 0);
+                        //if(errno == SIGPIPE){//Client has closed connection
+                          //      continue;
+                        //}
+                        if(ret == -1){
+                                perror("server send error: Error sending file content");
+                                continue;
+                        }
+
 			//Server sends the file to client. 
 
 		}else if(strcmp("UPL", buf) == 0){
@@ -102,7 +188,7 @@ int main(int argc, char * argv[]){
 			}
 		}
 		
-		close(new_s1);
-		close(new_s2);
+//		close(new_s1);
+//		close(new_s2);
 	}
 }
