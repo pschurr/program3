@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <mhash.h>
+#include <unistd.h>
 #define MAX_PENDING 5
 #define MAX_COMMAND 256
 #define MAX_FILE_MESSAGE 512
@@ -167,6 +168,70 @@ int main(int argc, char * argv[]){
 			//Server sends the file to client. 
 
 		}else if(strcmp("UPL", buf) == 0){
+			char name_len[10];
+			//Server receiving the length of the file in a short int as well as the file name
+			ret = recv(new_s1, name_len, 10,0);
+			if(ret == 0) continue; // Client has closed connection continue
+			else if(ret < 0){
+				perror("server receive error: Error receiving file name length!");
+				exit(1);
+			}
+			int l = atoi(name_len);
+			char file_name[l];
+                        ret = recv(new_s1, file_name, l,0);
+                        if(ret == 0) continue; // Client has closed connection continue
+                        else if(ret < 0){
+                                perror("server receive error: Error receiving file name!");
+                                exit(1);
+                        }
+
+			//Sending an acknowledgement to the client that the file name/size was received
+			char *ack_string = "ACK";
+			int ack_string_len = strlen(ack_string) + 1;
+                        ret = send(new_s1, ack_string, ack_string_len, 0);
+
+			//Server receiving the File Size from the client
+			char size[10];
+			if((ret = recv(s,size, 10, 0))<0){
+				perror("server receive error: Error receiving file length!");
+				//exit(1);
+				continue;							
+			}
+			int file_size = atoi(size);
+			if ( file_size >= 0){ //Server returns an error message if file size is negative
+				//Receiving File
+				unsigned char content[file_size];
+				if(recv(s,content, file_size,0)<0){
+					perror("client recieve error: Error receiving file content!");
+					continue;
+				}
+
+				//Calculate Throughput
+				
+
+				//Receiving Hash
+				unsigned char hash[16];
+				if(recv(s,hash, 16, 0)<0){//Get that hash
+                                	perror("client receive error: Error receiving file hash!");
+                                      	continue;
+				}
+
+				//Writing file and checking the hash
+				fp = fopen(file_name, "w");
+				fprintf(fp, content);
+				td = mhash_init(MHASH_MD5);
+				if (td == MHASH_FAILED) return 1; 
+				fread(content, sizeof(char), file_size, fp);
+				fclose(fp);
+				mhash(td,&content , 1);
+				unsigned char * clientHash = mhash_end(td); 
+				if(strcmp(clientHash, hash) == 0){
+					printf("Successfully received %s.\n",file_name);
+				}
+
+			} else {
+				printf("Failed to received %s.\n", file_name);
+			}
 
 		}else if(strcmp("LIS", buf) == 0){
 
@@ -177,7 +242,51 @@ int main(int argc, char * argv[]){
 		}else if(strcmp("CHD", buf) == 0){
 
 		}else if(strcmp("DEL", buf) == 0){
+			
+			char name_len[10];
+			//Server receiving the length of the file in a short int as well as the file name
+			ret = recv(new_s1, name_len, 10,0);
+			if(ret == 0) continue; // Client has closed connection continue
+			else if(ret < 0){
+				perror("server receive error: Error receiving file name length!");
+				exit(1);
+			}
+			int l = atoi(name_len);
+			char file_name[l];
+                        ret = recv(new_s1, file_name, l,0);
+			
+			//Sending the client either a 1 or -1 based on if the file exists or not
+			fp = fopen(file_name, "r");
+			if (fp == NULL){
+				ret = send(new_s1, "-1",2,0);
+				if(ret == -1){
+					perror("server send error: Error sending file size");
+				}
+				continue;
+			}
+			ret = send(new_s1, "1",2,0);
 
+			//Receiving the confirmation for deleting the file. If the user confirms the delete, receiving 1, if not, receiving -1
+			char confirmation_string[2];
+			ret = recv(new_s1, confirmation_string, 2, 0);
+			int confirm_delete = atoi(confirmation_string);
+			if(confirm_delete == -1) continue;
+			
+			//Actually deleting the file
+			int remove_check = remove(file_name);
+			if(ret == 0) {
+				ret = send(new_s1, "1",2,0);
+				if(ret == -1){
+					perror("server send error: Error sending file deletion status");
+				}
+				
+   			} else {
+				ret = send(new_s1, "-1",2,0);
+				if(ret == -1){
+					perror("server send error: Error sending file deletion status");
+				}
+   			}
+ 
 		}else if(strcmp("XIT", buf) == 0){
 
 		} else {
