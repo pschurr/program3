@@ -7,6 +7,7 @@
 #include <netdb.h>
 #include <mhash.h>
 #define MAX_LINE 256
+
 int main(int argc, char * argv[]){
 	MHASH td;
 	FILE *fp;
@@ -14,11 +15,12 @@ int main(int argc, char * argv[]){
 	struct sockaddr_in sin;
 	char *host;
 	char buf[MAX_LINE];
-	int s, ret;
-	int len;
+	char ack[MAX_LINE];
+	int s, ret, len, new_s1;
 	int server_port;
 	char command[MAX_LINE];
 	char operation[3];
+	char decision[3];
 	char file_name[MAX_LINE];
 	if (argc==3) {
 		host = argv[1];
@@ -61,10 +63,8 @@ int main(int argc, char * argv[]){
 		//buf[MAX_LINE-1] = '\0';
 		
 		printf("Please enter an operation (REQ, UPL, DEL, LIS, MKD, RMD, CHD, XIT): ");   // PSchurr prompt user input
-		fgets(command, sizeof(command), stdin);
+		fgets(operation, sizeof(operation), stdin);
 		
-		memcpy(operation,&command[0],3);
-		operation[3]='\0';
 		len=strlen(operation) +1;
 		if(strcmp("REQ", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
@@ -146,15 +146,133 @@ int main(int argc, char * argv[]){
 
 
 		} else if( strcmp("UPL", operation) == 0) {
-			if(send(s,operation,len,0)==-1){
+			if(send(s,operation,len,0)==-1){  // client sends operation to upload a file to server
 				perror("client send error!"); 
 				exit(1);	
+			}
+			// client gets file name and checks if it exists
+			printf("Please enter the requested file name: ");
+			fgets(file_name, sizeof(file_name), stdin);
+			strtok(file_name, "\n");
+			int name_len = strlen(file_name)+1;
+			char len_str[10];
+			snprintf(len_str, 10, "%d", name_len);
+			fp = fopen(file_name, "r");
+                        if (fp == NULL){ // check if it exists
+				perror("File does not exist");
+				continue;
+			}			
+			
+			if(send(s, len_str, strlen(len_str)+1, 0)==-1){ // send file name length
+				perror("client send error: Error sending file name length!");
+				continue;
+			}
+			file_name[name_len] ='\0';
+			// client send file name (char string)
+                        if(send(s, file_name, name_len, 0)==-1){
+                                perror("client send error: Error sending file name!");
+                                continue;
+                        }
+			// receive ACK
+			if(recv(new_s1, buf, MAX_LINE, 0)==-1){
+				perror("Client receive error: Error receiving acknowledgement!");
+                        	continue;
+			}
+			if( strcmp("ACK", ack) !=0){ // make sure server sent proper acknowledgement
+				perror("Acknowledgement not properly received!");
+				continue;
+			}
+			// client send 32 bit value of file size
+			 fseek(fp, 0L, SEEK_END);
+                        int size = ftell(fp);
+                        rewind(fp);
+                        char file_size[10];
+                        snprintf(file_size, 10, "%d", size);
+                        if(send(new_s1, file_size, 10, 0)==-1){
+                                perror("Client send error: Error sending file size");
+				continue;
+			}
+			unsigned char *hash;
+                        char content[size];
+                        fread(content, sizeof(char),size,fp);
+                        fclose(fp);
+                        td = mhash_init(MHASH_MD5);
+                        if (td == MHASH_FAILED) return 1;
+                        mhash(td,&content , 1);
+                        hash = mhash_end(td);
+                        len = strlen(hash);
+                        if(send(new_s1, hash, 16, 0)==-1){
+                                perror("Client send error: Error sending hash");
+				continue;
 			}	
-		} else if (strcmp("MKD", operation) == 0) {
+			if(send(new_s1, content, size, 0)==-1){
+                                perror("Client send error: Error sending file");
+				continue;
+
+			}
+
+			// client sends file
+			// client computes hash and sends it
+			// recv throughput from server
+
+
+	
+		} else if (strcmp("DEL", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
 				exit(1);
 			}	
+			printf("Please enter the requested file name: ");
+                        fgets(file_name, sizeof(file_name), stdin);
+                        strtok(file_name, "\n");
+                        int name_len = strlen(file_name)+1;
+                        char len_str[10];
+                        snprintf(len_str, 10, "%d", name_len);
+		
+			 if(send(s, len_str, strlen(len_str)+1, 0)==-1){
+				perror("client send error: Error sending file name length!");
+                                continue;
+                        }
+                        file_name[name_len] ='\0';
+                        if(send(s, file_name, name_len, 0)==-1){
+                                perror("client send error: Error sending file name!");
+                                continue;
+                        }
+			char size[10];
+  			if(recv(s,size, 10, 0)==-1){
+				perror("client receive error: Error receiving file length!");
+				continue;
+			}
+			int file_size = atoi(size);
+			printf("%i\n", file_size);
+			if(file_size<0){ // make sure file exists on server side 
+				continue;
+			}
+			int c =0;
+			while(c==0){
+				printf("Are you sure you want to delete this file? Enter Yes or No ");
+				fgets(decision, sizeof(decision), stdin);
+				if(stricmp("yes",decision)==0){
+					c =1;
+					// send 1
+				}else if(stricmp("no",decision) ==0){
+					c =1;
+					// send -1
+				}else{
+					printf("Enter a valid decision\n");
+				}
+			}
+  			if(recv(s,size, 10, 0)==-1){
+				perror("client receive error: Error receiving file length!");
+				continue;
+			}
+			int did_del= atoi(size);
+			if(file_size<0){ // make sure file exists on server side 
+				printf("Delete was not successful\n");
+				continue;
+			} else{
+				printf("Delete successful\n");
+			}
 		} else if (strcmp("RMD", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
