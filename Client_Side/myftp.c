@@ -222,7 +222,7 @@ int main(int argc, char * argv[]){
 				perror("client send error!"); 
 				exit(1);
 			}	
-			printf("Please enter the requested file name: ");
+			printf("Please enter the file to delete: ");
                         fgets(file_name, sizeof(file_name), stdin);
                         strtok(file_name, "\n");
                         int name_len = strlen(file_name)+1;
@@ -273,21 +273,90 @@ int main(int argc, char * argv[]){
 			} else{
 				printf("Delete successful\n");
 			}
-		} else if (strcmp("RMD", operation) == 0) {
-			if(send(s,operation,len,0)==-1){
-				perror("client send error!"); 
-				exit(1);
-			}	
-		} else if (strcmp("CHD", operation) == 0) {
-			if(send(s,operation,len,0)==-1){
-				perror("client send error!"); 
-				exit(1);
-			}	
 		} else if (strcmp("LIS", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
-				exit(1);	
+				exit(1);
 			}	
+			char size[10];
+  			if((ret = recv(s,size, 10, 0))<0){
+				perror("client receive error: Error receiving file length!");
+				//exit(1);
+				continue;
+			}
+			int file_size = atoi(size);
+			
+			// receive listing.txt
+			// print list out to user
+			fp = fopen("listing.txt", "r");
+    			if (fp == NULL){
+        			printf("Cannot open file \n");
+        			continue;
+    			}
+	 		c = fgetc(fp);
+    			while (c != EOF){
+        			printf ("%c", c);
+        			c = fgetc(fp);
+    			}
+    			fclose(fp);
+		} else if (strcmp("MKD", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);
+			}	
+			printf("Please enter the directory name to create");
+                        fgets(dir_name, sizeof(dir_name), stdin);
+                        strtok(dir_name, "\n");
+                        int name_len = strlen(dir_name)+1;
+                        char len_str[10];
+                        snprintf(len_str, 10, "%d", name_len);
+		
+			 if(send(s, len_str, strlen(len_str)+1, 0)==-1){
+				perror("client send error: Error sending directory name length!");
+                                continue;
+                        }
+                        dir_name[name_len] ='\0';
+                        if(send(s, dir_name, name_len, 0)==-1){
+                                perror("client send error: Error sending directory name!");
+                                continue;
+                        }
+			char success[10];
+			if(recv(s, success, 10,0)==-1){
+				perror("Client receive error: Error receiving server confirmation!");
+				continue;
+			}
+			int succ = atoi(success);
+			if(succ == -2){
+				printf("The directory already exists on the server!\n");
+				continue;
+			} else if(succ ==-1){
+				printf("Error in making directory!\n");
+				continue;
+			}else if (succ >0){
+				printf("The directory was successfully made!"\n);
+			}
+		} else if (strcmp("RMD", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);	
+			}
+			printf("Please enter the directory to delete: ");
+                        fgets(file_name, sizeof(file_name), stdin);
+                        strtok(file_name, "\n");
+                        int name_len = strlen(file_name)+1;
+                        char len_str[10];
+                        snprintf(len_str, 10, "%d", name_len);
+
+                         if(send(s, len_str, strlen(len_str)+1, 0)==-1){
+                                perror("client send error: Error sending directory name length!");
+                                continue;
+                        }
+                        file_name[name_len] ='\0';
+                        if(send(s, file_name, name_len, 0)==-1){
+                                perror("client send error: Error sending directory name!");
+                                continue;
+                        }
+	
 		} else if (strcmp("XIT", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
