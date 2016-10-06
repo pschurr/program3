@@ -19,7 +19,7 @@ int main(int argc, char * argv[]){
 	int s, ret, len, new_s1;
 	int server_port;
 	char command[MAX_LINE];
-	char operation[3];
+	char operation[10];
 	char decision[3];
 	char file_name[MAX_LINE];
 	if (argc==3) {
@@ -64,12 +64,12 @@ int main(int argc, char * argv[]){
 		
 		printf("Please enter an operation (REQ, UPL, DEL, LIS, MKD, RMD, CHD, XIT): ");   // PSchurr prompt user input
 		fgets(operation, sizeof(operation), stdin);
-		
+		strtok(operation,"\n");	
 		len=strlen(operation) +1;
 		if(strcmp("REQ", operation) == 0) {
-			if(send(s,operation,len,0)==-1){
-			perror("client send error!"); 
-			exit(1);	
+			if(send(s,operation,strlen(operation)+1,0)==-1){
+				perror("client send error!"); 
+				exit(1);	
 			}
 			printf("Please enter the requested file name: ");
 			fgets(file_name, sizeof(file_name), stdin);
@@ -99,31 +99,71 @@ int main(int argc, char * argv[]){
 
 			if ( file_size >= 0){ // Server returns a negative file length if file doesn't exist on server
 				unsigned char hash[16];
-				if(recv(s,hash, 16, 0)<0){//Get that hash
+				char temp_hash[16];
+				int ret = 0;
+				int t =0;
+				/*while(ret < 16){
+					t = recv(s, temp_hash, 16, 0);
+					printf("%i\n",t);
+					if(t<= 0){
+						ret = t;
+						break;
+					} 
+					ret = ret + t;
+					strcat(hash, temp_hash);
+					if (ret < 16) hash[t] = 0;
+					memset(temp_hash,0,strlen(temp_hash));
+				}*/
+				ret = recv(s,hash, 16, 0);
+				printf("%i\n",ret);
+				if(ret<0){//Get that hash
                                 	perror("client receive error: Error receiving file hash!");
                                 	//exit(1);
                                 	continue;
                         	}
-				unsigned char content[file_size];
-				if(recv(s,content, file_size,0)<0){
+				char content[file_size];
+				memset(content,0,strlen(content));
+				char temp[file_size];
+				ret = 0;
+				t = 0;
+				while(ret < file_size){
+		
+					t = recv(s,temp,file_size,0);
+					if (t <= 0){
+						ret = t;
+						break;
+					} 
+					ret = ret + t;
+					strcat(content, temp);
+					if(ret < file_size) content[t]=0;
+					memset(temp,0,strlen(temp));
+				}
+					
+				if(ret<0){
 					perror("client recieve error: Error receiving file content!");
 					//exit(1);
 					continue;
 				}
 				fp = fopen(file_name, "w");
 				fprintf(fp, content);
+				fclose(fp);
+				fp = fopen(file_name, "r");
+				memset(content,0,strlen(content));
 				td = mhash_init(MHASH_MD5);
 				if (td == MHASH_FAILED) return 1; 
 				fread(content, sizeof(char), file_size, fp);
 				fclose(fp);
 				mhash(td,&content , 1);
-				unsigned char * serverHash = mhash_end(td); 
-				if(strcmp(serverHash, hash) == 0){
+				unsigned char *serverHash = mhash_end(td);
+				hash[16] = '\0';
+				printf("%s, %i\n", hash, strlen(hash));
+				printf("%s, %i\n", serverHash, strlen(serverHash));
+				if(strcmp(hash,serverHash) == 0){
 					printf("Successfully received %s.\n",file_name);
 				}
 
 				else{
-					printf("Failed to received %s.\n", file_name);
+					printf("Failed to receive %s.\n", file_name);
 				}	
 				//Cleanup here
 				
@@ -252,10 +292,10 @@ int main(int argc, char * argv[]){
 			while(c==0){
 				printf("Are you sure you want to delete this file? Enter Yes or No ");
 				fgets(decision, sizeof(decision), stdin);
-				if(stricmp("yes",decision)==0){
+				if(strcmp("yes",decision)==0){
 					c =1;
 					// send 1
-				}else if(stricmp("no",decision) ==0){
+				}else if(strcmp("no",decision) ==0){
 					c =1;
 					// send -1
 				}else{
@@ -293,7 +333,7 @@ int main(int argc, char * argv[]){
         			printf("Cannot open file \n");
         			continue;
     			}
-	 		c = fgetc(fp);
+	 		char c = fgetc(fp);
     			while (c != EOF){
         			printf ("%c", c);
         			c = fgetc(fp);
@@ -305,7 +345,8 @@ int main(int argc, char * argv[]){
 				exit(1);
 			}	
 			printf("Please enter the directory name to create");
-                        fgets(dir_name, sizeof(dir_name), stdin);
+                        char * dir_name;
+			fgets(dir_name, sizeof(dir_name), stdin);
                         strtok(dir_name, "\n");
                         int name_len = strlen(dir_name)+1;
                         char len_str[10];
@@ -333,7 +374,7 @@ int main(int argc, char * argv[]){
 				printf("Error in making directory!\n");
 				continue;
 			}else if (succ >0){
-				printf("The directory was successfully made!"\n);
+				printf("The directory was successfully made!\n");
 			}
 		} else if (strcmp("RMD", operation) == 0) {
 			if(send(s,operation,len,0)==-1){

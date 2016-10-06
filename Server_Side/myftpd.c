@@ -63,6 +63,7 @@ int main(int argc, char * argv[]){
         }
 	int ret = -4;
 	while(1){
+		memset(buf, 0,strlen(buf));
 		printf("Prompting for client command.\n");
 		ret = recv(new_s1, buf, MAX_COMMAND, 0);
 		if (ret == 0){	//Ret == 0 if client has closed connection
@@ -76,11 +77,7 @@ int main(int argc, char * argv[]){
 			perror("Server receive error: Error receiving command!");
 			exit(1);
 		}
-	
-		len = strlen(buf); 
-		if(len==0) break;
-
-		if(strcmp("REQ", buf) == 0){
+		if (strcmp("REQ", buf) == 0){
 			// I REMOVED THE CURRENT SEND AND ACCEPT BECAUSE THE ASSIGNMENT HAS BEEN UPDATED (SEE PIAZZA) AND ACCEPT IS ONLY FOR ACCEPTING CONNECTIONS)
 			//Sending a prompt back to the client to enter a file name for the request
 			//char *file_message = "Please enter the name of the file that you would like to request";
@@ -128,6 +125,7 @@ int main(int argc, char * argv[]){
 			rewind(fp);
 			char file_size[10];
 			snprintf(file_size, 10, "%d", size);
+			//printf("%i, %s \n",size,file_size);
 			ret = send(new_s1, file_size, 10, 0);
                         //if(errno == SIGPIPE){//Client has closed connection
                           //      continue;
@@ -147,7 +145,7 @@ int main(int argc, char * argv[]){
                         mhash(td,&content , 1);
 			hash = mhash_end(td);
 			len = strlen(hash);
-                        ret = send(new_s1, hash, 16, 0);
+                        ret = send(new_s1, hash, len, 0);
                         //if(errno == SIGPIPE){//Client has closed connection
                           //      continue;
                         //}
@@ -290,11 +288,12 @@ int main(int argc, char * argv[]){
 		}else if(strcmp("XIT", buf) == 0){
 
 		} else {
-			char *command_error_message = "Please enter a valid command for this client/server";
-			if(send(s, command_error_message, sizeof(command_error_message), 0)==-1){ 
-				perror("server send command error message error!"); 
-				exit(1);
-			}
+			continue;
+			//char *command_error_message = "Please enter a valid command for this client/server";
+			//if(send(s, command_error_message, sizeof(command_error_message), 0)==-1){ 
+			//	perror("server send command error message error!"); 
+			//	exit(1);
+			//}
 		}
 		
 //		close(new_s1);
