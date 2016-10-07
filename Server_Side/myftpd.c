@@ -217,10 +217,11 @@ int main(int argc, char * argv[]){
                                         if(ret < file_size) content[t]=0;
                                         memset(temp,0,strlen(temp));
                                 }
-				if(ret<=0){
+				if(ret<0){
 					perror("server recieve error: Error receiving file content!");
 					continue;
 				}
+				printf("%s\n",content);
 
 				//Calculate Throughput
 				
@@ -246,6 +247,9 @@ int main(int argc, char * argv[]){
 				hash[16] = '\0';
 				if(strcmp(clientHash, hash) == 0){
 					printf("Successfully received %s.\n",file_name);
+				}
+				else {
+					printf("Failed to receive %s. \n", file_name);
 				}
 
 			} else {
