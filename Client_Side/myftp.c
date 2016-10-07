@@ -64,7 +64,8 @@ int main(int argc, char * argv[]){
 	/* main loop: get and send lines of text */
 	while (1){//fgets(buf, sizeof(buf), stdin)) {
 		//buf[MAX_LINE-1] = '\0';
-		
+		memset(operation,0,strlen(operation));
+
 		printf("Please enter an operation (REQ, UPL, DEL, LIS, MKD, RMD, CHD, XIT): ");   // PSchurr prompt user input
 		fgets(operation, sizeof(operation), stdin);
 		strtok(operation,"\n");	
@@ -263,8 +264,10 @@ int main(int argc, char * argv[]){
                                 perror("Client send error: Error sending hash");
 				continue;
 			}
-			printf("%s\n", content);	
-			if(send(s, content, size, 0)==-1){
+			printf("%s\n", content);
+			ret = send(s,content,size,0);
+			printf("%i, %i\n",ret,size);	
+			if(ret==-1){
                                 perror("Client send error: Error sending file");
 				continue;
 
