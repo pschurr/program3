@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 #include <netdb.h>
 #include <mhash.h>
 #define MAX_LINE 256
@@ -16,6 +17,8 @@ int main(int argc, char * argv[]){
 	char *host;
 	char buf[MAX_LINE];
 	char ack[MAX_LINE];
+	struct timeval t1, t2;
+        double elapsedTime;
 	int s, ret, len, new_s1;
 	int server_port;
 	char command[MAX_LINE];
@@ -126,6 +129,7 @@ int main(int argc, char * argv[]){
 				char temp[file_size];
 				ret = 0;
 				t = 0;
+				gettimeofday(&t1, NULL);
 				while(ret < file_size){
 		
 					t = recv(s,temp,file_size,0);
@@ -138,6 +142,9 @@ int main(int argc, char * argv[]){
 					if(ret < file_size) content[t]=0;
 					memset(temp,0,strlen(temp));
 				}
+				gettimeofday(&t2, NULL);
+				elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
+    				elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000000.0;
 					
 				if(ret<0){
 					perror("client recieve error: Error receiving file content!");
@@ -156,10 +163,15 @@ int main(int argc, char * argv[]){
 				mhash(td,&content , 1);
 				unsigned char *serverHash = mhash_end(td);
 				hash[16] = '\0';
-				printf("%s, %i\n", hash, strlen(hash));
-				printf("%s, %i\n", serverHash, strlen(serverHash));
+				//printf("%s, %i\n", hash, strlen(hash));
+				//printf("%s, %i\n", serverHash, strlen(serverHash));
 				if(strcmp(hash,serverHash) == 0){
 					printf("Successfully received %s.\n",file_name);
+					printf("%i bytes transferred in %lf seconds: %lf Megabytes/sec\n", file_size, elapsedTime, (file_size/1000000)/elapsedTime);
+					printf("File MD5sum: ");
+					int i;
+					for (i =0;i<16;i++) printf("%0x", hash[i]);
+					printf("\n");
 				}
 
 				else{
@@ -191,17 +203,13 @@ int main(int argc, char * argv[]){
 				exit(1);	
 			}
 			// client gets file name and checks if it exists
-			printf("Please enter the requested file name: ");
+			printf("Please enter the name of the file to be uploaded: ");
 			fgets(file_name, sizeof(file_name), stdin);
 			strtok(file_name, "\n");
 			int name_len = strlen(file_name)+1;
 			char len_str[10];
 			snprintf(len_str, 10, "%d", name_len);
-			fp = fopen(file_name, "r");
-                        if (fp == NULL){ // check if it exists
-				perror("File does not exist");
-				continue;
-			}			
+			fp = fopen(file_name, "r");			
 			
 			if(send(s, len_str, strlen(len_str)+1, 0)==-1){ // send file name length
 				perror("client send error: Error sending file name length!");
@@ -213,8 +221,9 @@ int main(int argc, char * argv[]){
                                 perror("client send error: Error sending file name!");
                                 continue;
                         }
+			char ack[3];
 			// receive ACK
-			if(recv(new_s1, buf, MAX_LINE, 0)==-1){
+			if(recv(s, ack, 10, 0)==-1){
 				perror("Client receive error: Error receiving acknowledgement!");
                         	continue;
 			}
@@ -222,13 +231,22 @@ int main(int argc, char * argv[]){
 				perror("Acknowledgement not properly received!");
 				continue;
 			}
+			if(fp == NULL){
+				ret = send(new_s1, "-1", 2,0);
+				if(ret == -1){
+                                        perror("server send error: Error sending file size");
+                                }
+
+                                continue;
+			}
+
 			// client send 32 bit value of file size
-			 fseek(fp, 0L, SEEK_END);
+			fseek(fp, 0L, SEEK_END);
                         int size = ftell(fp);
                         rewind(fp);
                         char file_size[10];
                         snprintf(file_size, 10, "%d", size);
-                        if(send(new_s1, file_size, 10, 0)==-1){
+                        if(send(s, file_size, 10, 0)==-1){
                                 perror("Client send error: Error sending file size");
 				continue;
 			}
@@ -241,11 +259,12 @@ int main(int argc, char * argv[]){
                         mhash(td,&content , 1);
                         hash = mhash_end(td);
                         len = strlen(hash);
-                        if(send(new_s1, hash, 16, 0)==-1){
+                        if(send(s, hash, 16, 0)==-1){
                                 perror("Client send error: Error sending hash");
 				continue;
-			}	
-			if(send(new_s1, content, size, 0)==-1){
+			}
+			printf("%s\n", content);	
+			if(send(s, content, size, 0)==-1){
                                 perror("Client send error: Error sending file");
 				continue;
 
@@ -402,7 +421,10 @@ int main(int argc, char * argv[]){
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
 				exit(1);
-			}	
+			}
+			close(s);
+			printf("Session has been closed.\n");
+			return 0;	
 		} else if (strcmp("DEL", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 

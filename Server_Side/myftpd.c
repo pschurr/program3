@@ -63,10 +63,12 @@ int main(int argc, char * argv[]){
         }
 	int ret = -4;
 	while(1){
-		memset(buf, 0,strlen(buf));
-		printf("Prompting for client command.\n");
-		ret = recv(new_s1, buf, MAX_COMMAND, 0);
-		if (ret == 0){	//Ret == 0 if client has closed connection
+		memset(buf, 0,strlen(buf));	
+		if (new_s1!=-1){
+			printf("Prompting for client command.\n");
+			ret = recv(new_s1, buf, MAX_COMMAND, 0);
+		}
+		if (ret == 0 || new_s1==-1){	//Ret == 0 if client has closed connection
 			printf("Waiting for client connection.\n");
 			if((new_s1 = accept(s,(struct sockaddr *)&sin, &len))<0){
 				perror("Server Connection Error!");
@@ -115,7 +117,6 @@ int main(int argc, char * argv[]){
 			//	}
 				if(ret == -1){
 					perror("server send error: Error sending file size");
-			//		exit(1);
 				}
 
 				continue;
@@ -190,7 +191,7 @@ int main(int argc, char * argv[]){
 
 			//Server receiving the File Size from the client
 			char size[10];
-			if((ret = recv(s,size, 10, 0))<0){
+			if((ret = recv(new_s1,size, 10, 0))<0){
 				perror("server receive error: Error receiving file length!");
 				//exit(1);
 				continue;							
@@ -198,9 +199,26 @@ int main(int argc, char * argv[]){
 			int file_size = atoi(size);
 			if ( file_size >= 0){ //Server returns an error message if file size is negative
 				//Receiving File
-				unsigned char content[file_size];
-				if(recv(s,content, file_size,0)<0){
-					perror("client recieve error: Error receiving file content!");
+				char content[file_size];
+                                memset(content,0,strlen(content));
+                                char temp[file_size];
+                                ret = 0;
+                                int t = 0;
+                                while(ret < file_size){
+
+                                        t = recv(new_s1,temp,file_size,0);
+                                        if (t <= 0){
+                                                ret = t;
+                                                break;
+                                        }
+                                        ret = ret + t;
+                                        strcat(content, temp);
+					printf("%s\n",temp);
+                                        if(ret < file_size) content[t]=0;
+                                        memset(temp,0,strlen(temp));
+                                }
+				if(ret<=0){
+					perror("server recieve error: Error receiving file content!");
 					continue;
 				}
 
@@ -209,20 +227,23 @@ int main(int argc, char * argv[]){
 
 				//Receiving Hash
 				unsigned char hash[16];
-				if(recv(s,hash, 16, 0)<0){//Get that hash
-                                	perror("client receive error: Error receiving file hash!");
+				if(recv(new_s1,hash, 16, 0)<0){//Get that hash
+                                	perror("server receive error: Error receiving file hash!");
                                       	continue;
 				}
 
 				//Writing file and checking the hash
 				fp = fopen(file_name, "w");
 				fprintf(fp, content);
+				fclose(fp);
 				td = mhash_init(MHASH_MD5);
 				if (td == MHASH_FAILED) return 1; 
+				fp = fopen(file_name,"r");
 				fread(content, sizeof(char), file_size, fp);
 				fclose(fp);
 				mhash(td,&content , 1);
 				unsigned char * clientHash = mhash_end(td); 
+				hash[16] = '\0';
 				if(strcmp(clientHash, hash) == 0){
 					printf("Successfully received %s.\n",file_name);
 				}
@@ -286,7 +307,8 @@ int main(int argc, char * argv[]){
    			}
  
 		}else if(strcmp("XIT", buf) == 0){
-
+			close(new_s1);
+			new_s1 = -1;
 		} else {
 			continue;
 			//char *command_error_message = "Please enter a valid command for this client/server";
