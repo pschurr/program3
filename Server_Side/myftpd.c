@@ -403,6 +403,40 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 		}else if(strcmp("CHD", buf) == 0){
+			char name_len[10];
+			//Server receiving the length of the file in a short int as well as the file name
+			ret = recv(new_s1, name_len, 10,0);
+			if(ret == 0) continue; // Client has closed connection continue
+			else if(ret < 0){
+				perror("server receive error: Error receiving file name length!");
+				exit(1);
+			}
+			int l = atoi(name_len);
+			char dir_name[l];
+                        ret = recv(new_s1, dir_name, l,0);
+                        if(ret == 0) continue; // Client has closed connection continue
+                        else if(ret < 0){
+                                perror("server receive error: Error receiving file name!");
+                                exit(1);
+                        }
+			DIR* d = opendir(dir_name);
+			if(d){
+				int check = chdir(dir_name);
+				if(!check){
+					if(send(new_s1, "1",2,0) < 0){
+						perror("server send error: Error sending change directory!");
+					}
+				} else {
+					if(send(new_s1,"-1",2,0) < 0){
+						perror("server send error: Error sending failed to change directory");
+					}
+				}	
+			} else {
+				if(send(new_s1, "-2",2,0)<0){
+					perror("server send error: Error sending directory doesn't exist");   
+				}
+				continue;
+			}
 
 		}else if(strcmp("DEL", buf) == 0){
 			
