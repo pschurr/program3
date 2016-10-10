@@ -501,8 +501,17 @@ int main(int argc, char * argv[]){
 				perror("client send error!"); 
 				exit(1);	
 			}	
+		} else if(strcmp("CHD", operation) == 0) {
+			if(send(s,operation,len,0)==-1){
+				perror("client send error!"); 
+				exit(1);	
+			}
+			printf("Please enter the directory you would like to change to: ");
+                        fgets(file_name, sizeof(file_name), stdin);
+                        strtok(file_name, "\n");
+                        int name_len = strlen(file_name)+1;
+                        char len_str[10];
 		}
-		
 	
 		if (!strncmp(buf, "Exit",4)){
  			printf("Good Bye!\n");
