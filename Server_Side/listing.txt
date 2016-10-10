@@ -1,0 +1,9 @@
+Makefile
+MediumFile.pdf
+SmallFile.txt
+myftpd
+myftpd.c
+myftpd.c~
+upload.txt
+listing.txt
+deleteme.txt

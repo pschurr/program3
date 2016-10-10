@@ -449,13 +449,12 @@ int main(int argc, char * argv[]){
 			int c = atoi(conf);
 			char affirm[3];
 			if (c > 0){
-				while (1){
+				//while (strcmp(affirm,"No") != 0 || strcmp(affirm,"Yes")!=0){
 					printf("Do you want to delete %s: ", file_name);
 					fgets(affirm, 4, stdin);
 					strtok(affirm, "\n");
-					if (strcmp(affirm,"No") == 0 || strcmp(affirm,"Yes")==0) break;
-					//printf("%s\n", affirm);
-				}
+					printf("%s\n", affirm);
+				//}
 				if (strcmp(affirm,"No") == 0){
 					printf("Delete abandoned by the user!\n");
 					if(send(s, affirm, strlen(affirm),0) < 0){

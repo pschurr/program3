@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <mhash.h>
+#include <dirent.h>
 #include <unistd.h>
 #define MAX_PENDING 5
 #define MAX_COMMAND 256
@@ -63,6 +64,7 @@ int main(int argc, char * argv[]){
         }
 	int ret = -4;
 	while(1){
+		bzero((char *)&sin, sizeof(sin));
 		memset(buf, 0,strlen(buf));	
 		if (new_s1!=-1){
 			printf("Prompting for client command.\n");
@@ -257,11 +259,149 @@ int main(int argc, char * argv[]){
 			}
 
 		}else if(strcmp("LIS", buf) == 0){
-
-		}else if(strcmp("DIR", buf) == 0){
-
+			FILE * fp;
+			fp = fopen("listing.txt", "w");
+			DIR           *d;
+  			struct dirent *dir;
+  			d = opendir(".");
+  			if (d){
+    				while ((dir = readdir(d)) != NULL) {
+					if ((strcmp(dir->d_name,".") != 0) && (strcmp(dir->d_name,"..")!=0)){
+      						fprintf(fp,"%s\n",dir->d_name);
+					}
+    				}	
+				fclose(fp);
+    				closedir(d);
+  			}
+			fp = fopen("listing.txt", "r");
+                        fseek(fp, 0L, SEEK_END);
+                        int size = ftell(fp);
+                        rewind(fp);
+			char content[size];
+			fread(content, sizeof(char), size, fp);
+                        fclose(fp);
+                        char file_size[10];
+                        snprintf(file_size, 10, "%d", size);
+                        //printf("%i, %s \n",size,file_size);
+                        ret = send(new_s1, file_size, 10, 0);
+                        if(ret == -1){
+                                perror("server send error: Error sending file size");
+                                //exit(1);
+                                continue;
+                        }
+                        ret = send(new_s1, content, size, 0);
+                        if(ret == -1){
+                                perror("server send error: Error sending file content");
+                                continue;
+                        }
+                               
+			
+	
+		}else if(strcmp("MKD", buf) == 0){
+			char name_len[10];
+			//Server receiving the length of the file in a short int as well as the file name
+			ret = recv(new_s1, name_len, 10,0);
+			if(ret == 0) continue; // Client has closed connection continue
+			else if(ret < 0){
+				perror("server receive error: Error receiving file name length!");
+				exit(1);
+			}
+			int l = atoi(name_len);
+			char dir_name[l];
+                        ret = recv(new_s1, dir_name, l,0);
+                        if(ret == 0) continue; // Client has closed connection continue
+                        else if(ret < 0){
+                                perror("server receive error: Error receiving file name!");
+                                exit(1);
+                        }
+			DIR* d = opendir(dir_name);
+			if (d) {
+				if(send(new_s1, "-2",2 , 0)<0){
+					perror("server send error: Error sending directory already exists!");
+				}
+				continue;
+			}
+			else if(ENOENT == errno){
+				int stat = mkdir(dir_name);
+				if (!stat){
+					if(send(new_s1, "10000",5,0)<0){
+						perror("server send error: Error sending directory successfully created!");
+					}
+				}
+				else {
+					if(send(new_s1, "-1",2,0)<0){
+						perror("server send error: Error sending directory not successfully created!");
+					}
+				}
+			}
 		}else if(strcmp("RMD", buf) == 0){
-
+			char name_len[10];
+			//Server receiving the length of the file in a short int as well as the file name
+			ret = recv(new_s1, name_len, 10,0);
+			if(ret == 0) continue; // Client has closed connection continue
+			else if(ret < 0){
+				perror("server receive error: Error receiving file name length!");
+				exit(1);
+			}
+			int l = atoi(name_len);
+			char dir_name[l];
+                        ret = recv(new_s1, dir_name, l,0);
+                        if(ret == 0) continue; // Client has closed connection continue
+                        else if(ret < 0){
+                                perror("server receive error: Error receiving file name!");
+                                exit(1);
+                        }
+			DIR* d = opendir(dir_name);
+			if (d) {
+				if(send(new_s1, "1",2 , 0)<0){
+					perror("server send error: Error sending directory already exists!");
+				}
+				char confirm[3];
+				ret = recv(new_s1, confirm, 3,0);
+	                        if(ret == 0) continue; // Client has closed connection continue
+                        	else if(ret < 0){
+                                	perror("server receive error: Error receiving deletion confirmation!");
+                                	exit(1);
+                        	}
+				int empty_flag = 0;
+				struct dirent *dir;
+				if (strcmp(confirm, "Yes")==0){
+					while ((dir = readdir(d)) != NULL) {
+						if ((strcmp(dir->d_name,".") != 0) && (strcmp(dir->d_name,"..")!=0)){
+							printf("%s\n", dir->d_name);
+      							empty_flag = 1;
+							break;	
+						}
+    					}
+					if (empty_flag == 0){
+						int check = rmdir(dir_name);
+						if(!check){
+							if(send(new_s1, "1",2 , 0)<0){
+								perror("server send error: Error sending directory deleted!");
+							}
+						}
+						else {
+							if(send(new_s1, "-1",2 , 0)<0){
+								perror("server send error: Error sending failed to delete directory!");
+							}
+						}
+					}
+					else {
+						if(send(new_s1, "-1",2 , 0)<0){
+							perror("server send error: Error sending failed to delete directory");
+						}
+					}
+				}
+				else {
+					continue;
+				}
+			}
+			else if(ENOENT == errno){
+				if(send(new_s1, "-1",2 , 0)<0){
+					perror("server send error: Error sending directory doesn't exist!");
+				}
+				continue;
+			}
 		}else if(strcmp("CHD", buf) == 0){
 
 		}else if(strcmp("DEL", buf) == 0){
