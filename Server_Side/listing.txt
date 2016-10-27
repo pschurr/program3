@@ -6,4 +6,4 @@ myftpd.c
 myftpd.c~
 upload.txt
 listing.txt
-deleteme.txt
+New_dir

@@ -289,6 +289,7 @@ int main(int argc, char * argv[]){
                                 //exit(1);
                                 continue;
                         }
+			printf("%s\n",content);
                         ret = send(new_s1, content, size, 0);
                         if(ret == -1){
                                 perror("server send error: Error sending file content");
@@ -468,10 +469,11 @@ int main(int argc, char * argv[]){
 			ret = recv(new_s1, confirmation_string, 2, 0);
 			int confirm_delete = atoi(confirmation_string);
 			if(confirm_delete == -1) continue;
-			
+			printf("%s\n", confirmation_string);	
 			//Actually deleting the file
 			int remove_check = remove(file_name);
-			if(ret == 0) {
+			printf("%i\n",remove_check);
+			if(remove_check == 0) {
 				ret = send(new_s1, "1",2,0);
 				if(ret == -1){
 					perror("server send error: Error sending file deletion status");

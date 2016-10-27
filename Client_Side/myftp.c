@@ -306,20 +306,29 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 			int file_size = atoi(size);
-			printf("%i\n", file_size);
+			//printf("%i\n", file_size);
 			if(file_size<0){ // make sure file exists on server side 
 				continue;
 			}
 			int c =0;
-			while(c==0){
-				printf("Are you sure you want to delete this file? Enter Yes or No ");
-				fgets(decision, sizeof(decision), stdin);
+			char decision[3];
+			while(1){
+				printf("Are you sure you want to delete this file? Enter Yes or No: ");
+				fgets(decision, sizeof(decision)+1, stdin);
+				strtok(decision,"\n");
+				//printf("%s\n",decision);
 				if(strcmp("yes",decision)==0){
-					c =1;
-					// send 1
+					if(send(s,"1",len,0)==-1){
+						perror("client send error!"); 
+						exit(1);
+					}
+					break;
 				}else if(strcmp("no",decision) ==0){
-					c =1;
-					// send -1
+					if(send(s,"-1",len,0)==-1){
+						perror("client send error!"); 
+						exit(1);
+					}
+					break;	
 				}else{
 					printf("Enter a valid decision\n");
 				}
@@ -329,12 +338,14 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 			int did_del= atoi(size);
-			if(file_size<0){ // make sure file exists on server side 
+			if(did_del<0){ // make sure file exists on server side 
 				printf("Delete was not successful\n");
 				continue;
 			} else{
 				printf("Delete successful\n");
-			}
+			} 
+
+			memset(operation,0,strlen(operation));	
 		} else if (strcmp("LIS", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
@@ -449,12 +460,11 @@ int main(int argc, char * argv[]){
 			int c = atoi(conf);
 			char affirm[3];
 			if (c > 0){
-				while (1){
+				while (strcmp(affirm,"No") != 0 || strcmp(affirm,"Yes")!=0){
 					printf("Do you want to delete %s: ", file_name);
 					fgets(affirm, 4, stdin);
 					strtok(affirm, "\n");
-					if (strcmp(affirm,"No") == 0 || strcmp(affirm,"Yes")==0) break;
-					//printf("%s\n", affirm);
+					printf("%s\n", affirm);
 				}
 				if (strcmp(affirm,"No") == 0){
 					printf("Delete abandoned by the user!\n");
@@ -496,22 +506,13 @@ int main(int argc, char * argv[]){
 			close(s);
 			printf("Session has been closed.\n");
 			return 0;	
-		} else if (strcmp("DEL", operation) == 0) {
+		} /*else if (strcmp("DEL", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
 				exit(1);	
 			}	
-		} else if(strcmp("CHD", operation) == 0) {
-			if(send(s,operation,len,0)==-1){
-				perror("client send error!"); 
-				exit(1);	
-			}
-			printf("Please enter the directory you would like to change to: ");
-                        fgets(file_name, sizeof(file_name), stdin);
-                        strtok(file_name, "\n");
-                        int name_len = strlen(file_name)+1;
-                        char len_str[10];
 		}
+		
 	
 		if (!strncmp(buf, "Exit",4)){
  			printf("Good Bye!\n");
@@ -523,7 +524,7 @@ int main(int argc, char * argv[]){
  		if(send(s, buf, len, 0)==-1){
 			perror("client send error!"); 
 			exit(1);	
-		}
+		}*/
 	}
 
 	close(s);
