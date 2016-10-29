@@ -224,7 +224,7 @@ int main(int argc, char * argv[]){
                         }
 			char ack[3];
 			// receive ACK
-			if(recv(s, ack, 10, 0)==-1){
+			if(recv(s, ack, 4, 0)==-1){
 				perror("Client receive error: Error receiving acknowledgement!");
                         	continue;
 			}
@@ -260,7 +260,8 @@ int main(int argc, char * argv[]){
                         mhash(td,&content , 1);
                         hash = mhash_end(td);
                         len = strlen(hash);
-                        if(send(s, hash, 16, 0)==-1){
+			ret = send(s,hash,len,0);
+                        if(ret==-1){
                                 perror("Client send error: Error sending hash");
 				continue;
 			}

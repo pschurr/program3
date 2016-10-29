@@ -2,8 +2,8 @@ Makefile
 MediumFile.pdf
 SmallFile.txt
 myftpd
-myftpd.c
-myftpd.c~
 upload.txt
+myftpd.c~
 listing.txt
 New_dir
+myftpd.c

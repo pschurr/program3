@@ -64,7 +64,7 @@ int main(int argc, char * argv[]){
         }
 	int ret = -4;
 	while(1){
-		bzero((char *)&sin, sizeof(sin));
+		//bzero((char *)&sin, sizeof(sin));
 		memset(buf, 0,strlen(buf));	
 		if (new_s1!=-1){
 			printf("Prompting for client command.\n");
@@ -172,7 +172,10 @@ int main(int argc, char * argv[]){
 			char name_len[10];
 			//Server receiving the length of the file in a short int as well as the file name
 			ret = recv(new_s1, name_len, 10,0);
-			if(ret == 0) continue; // Client has closed connection continue
+			if(ret == 0){
+				 bzero((char *)&sin, sizeof(sin));
+				 continue; // Client has closed connection continue
+			}
 			else if(ret < 0){
 				perror("server receive error: Error receiving file name length!");
 				exit(1);
@@ -200,6 +203,12 @@ int main(int argc, char * argv[]){
 			}
 			int file_size = atoi(size);
 			if ( file_size >= 0){ //Server returns an error message if file size is negative
+                                unsigned char hash[16];
+                                if(recv(new_s1,hash, 16, 0)<0){//Get that hash
+                                        perror("server receive error: Error receiving file hash!");
+                                        continue;
+                                }
+
 				//Receiving File
 				char content[file_size];
                                 memset(content,0,strlen(content));
@@ -229,11 +238,11 @@ int main(int argc, char * argv[]){
 				
 
 				//Receiving Hash
-				unsigned char hash[16];
+			/*	unsigned char hash[16];
 				if(recv(new_s1,hash, 16, 0)<0){//Get that hash
                                 	perror("server receive error: Error receiving file hash!");
                                       	continue;
-				}
+				}*/
 
 				//Writing file and checking the hash
 				fp = fopen(file_name, "w");
@@ -487,6 +496,7 @@ int main(int argc, char * argv[]){
    			}
  
 		}else if(strcmp("XIT", buf) == 0){
+			bzero((char *)&sin, sizeof(sin));
 			close(new_s1);
 			new_s1 = -1;
 		} else {
