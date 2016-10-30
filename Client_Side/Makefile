@@ -4,4 +4,4 @@ myftp: myftp.c
 	gcc myftp.c -o myftp -lmhash
 
 clean:
-	rm *.o myftp
+	rm myftp

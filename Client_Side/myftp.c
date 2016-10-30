@@ -70,6 +70,8 @@ int main(int argc, char * argv[]){
 		fgets(operation, sizeof(operation), stdin);
 		strtok(operation,"\n");	
 		len=strlen(operation) +1;
+		
+		// REQ
 		if(strcmp("REQ", operation) == 0) {
 			if(send(s,operation,strlen(operation)+1,0)==-1){
 				perror("client send error!"); 
@@ -186,18 +188,8 @@ int main(int argc, char * argv[]){
 			}
 			
 			
-			// recvfrom (query for name) EDIT: Updated project document says not to query for name and length. 
-			// send length of filename and filename
-			// rec 32-bit file length
-			// decode 32 length
-			// if -1, break
-			// rec md5hash and store
-			// receive file and save
-			// compute hash
-			// notify user
-			// break
 
-
+		//UPL
 		} else if( strcmp("UPL", operation) == 0) {
 			if(send(s,operation,len,0)==-1){  // client sends operation to upload a file to server
 				perror("client send error!"); 
@@ -274,17 +266,15 @@ int main(int argc, char * argv[]){
 
 			}
 
-			// client sends file
-			// client computes hash and sends it
-			// recv throughput from server
 
 
-	
+		// DEL	
 		} else if (strcmp("DEL", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
 				exit(1);
 			}	
+			
 			printf("Please enter the file to delete: ");
                         fgets(file_name, sizeof(file_name), stdin);
                         strtok(file_name, "\n");
@@ -292,22 +282,24 @@ int main(int argc, char * argv[]){
                         char len_str[10];
                         snprintf(len_str, 10, "%d", name_len);
 		
-			 if(send(s, len_str, strlen(len_str)+1, 0)==-1){
+			if(send(s, len_str, strlen(len_str)+1, 0)==-1){
 				perror("client send error: Error sending file name length!");
                                 continue;
                         }
                         file_name[name_len] ='\0';
-                        if(send(s, file_name, name_len, 0)==-1){
+                        
+			if(send(s, file_name, name_len, 0)==-1){
                                 perror("client send error: Error sending file name!");
                                 continue;
                         }
 			char size[10];
-  			if(recv(s,size, 10, 0)==-1){
+  			
+			if(recv(s,size, 10, 0)==-1){
 				perror("client receive error: Error receiving file length!");
 				continue;
 			}
 			int file_size = atoi(size);
-			//printf("%i\n", file_size);
+			
 			if(file_size<0){ // make sure file exists on server side 
 				continue;
 			}
@@ -334,11 +326,13 @@ int main(int argc, char * argv[]){
 					printf("Enter a valid decision\n");
 				}
 			}
-  			if(recv(s,size, 10, 0)==-1){
+  			
+			if(recv(s,size, 10, 0)==-1){
 				perror("client receive error: Error receiving file length!");
 				continue;
 			}
 			int did_del= atoi(size);
+			
 			if(did_del<0){ // make sure file exists on server side 
 				printf("Delete was not successful\n");
 				continue;
@@ -347,6 +341,8 @@ int main(int argc, char * argv[]){
 			} 
 
 			memset(operation,0,strlen(operation));	
+		
+		// LIS
 		} else if (strcmp("LIS", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
@@ -380,19 +376,9 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 			printf("%s\n", content);
-			// receive listing.txt
-			// print list out to user
-			/*fp = fopen("listing.txt", "r");
-    			if (fp == NULL){
-        			printf("Cannot open file \n");
-        			continue;
-    			}
-	 		char c = fgetc(fp);
-    			while (c != EOF){
-        			printf ("%c", c);
-        			c = fgetc(fp);
-    			}
-    			fclose(fp);*/
+		
+
+		// MKD
 		} else if (strcmp("MKD", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
@@ -431,6 +417,9 @@ int main(int argc, char * argv[]){
 			}else if (succ >0){
 				printf("The directory was successfully made!\n");
 			}
+		
+	
+		// RMD
 		} else if (strcmp("RMD", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
 				perror("client send error!"); 
@@ -498,6 +487,49 @@ int main(int argc, char * argv[]){
 				printf("%s does not exist on server\n", file_name);
 				continue;
 			}
+
+		// CHD
+		} else if(strcmp("CHD",operation) ==0){
+			if(send(s,operation,len,0) ==-1){
+				perror("Clien send error!");
+				exit(1);
+			}
+			printf("Please enter the directory name: ");
+			fgets(dir_name, sizeof(dir_name), stdin);
+			strtok(dir_name, "\n");
+			int name_len = strlen(dir_name)+1;
+			char len_str[10];
+			snprintf(len_str, 10, "%d", name_len);
+			if(send(s, len_str, strlen(len_str)+1, 0)==-1){
+				perror("Client send error: Error sending directory name length!");
+				continue;
+			}
+			dir_name[name_len] ='\0';
+                        if(send(s, dir_name, name_len, 0)==-1){
+                                perror("client send error: Error sending file name!");
+                                //exit(1);
+                                continue;
+                        }
+			// recv confirm
+			char conf[2];
+			if(recv(s,conf, 2,0)==-1){
+				perror("client receive error: Error receiving directory deletion confirmation");
+				continue;
+			}
+			int confirm = atoi(conf);
+			
+
+			if(confirm>0){
+				printf("Changed current directory\n");
+				continue;
+			}else if(confirm =-1){
+				printf("Error in changing current directory\n");
+				continue;
+			} else if(confirm =-2){
+				printf("The directory does not exist on server\n");
+				continue;
+			}
+
 	
 		} else if (strcmp("XIT", operation) == 0) {
 			if(send(s,operation,len,0)==-1){
