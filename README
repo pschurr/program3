@@ -1,0 +1,52 @@
+Names: Rob Freedy, Patrick Schurr, Nicholas Haydel
+NetId: rfreedy, pschurr, nhaydel
+October 31st, 2016
+Computer Networks
+Assignment 3
+
+There are two directories along with this README in the program3 directory:
+Client_Side
+Server_Side
+
+The files thats are contained in the Client_Side directory are the following:
+Makefile
+myftp.c
+
+The files that are contained in the Server_Side directory are the following:
+Makefile
+myftpd.c
+
+In order to compile and execute the server side code in the Server_Side directory, please run the following commands:
+
+make clean
+make
+./myftpd <port_number>
+
+<port_number> = the number of the port you will use for both the client and server
+
+For example:
+./myftpd 41012
+
+In order to compile and execute the client side code in the Client_Side directory, please run the following commands:
+
+make clean
+make
+./myftp <server_name> <port_number>
+
+<server_name> = Name of the host i.e. student02.cse.nd.edu
+<port_number> = Same port number that the server uses
+
+For Example:
+./client_side student02.cse.nd.edu 41012
+
+In order to run this program correctly, please start the server first and then start the client. After both the server and the client are started, please follow the command prompts on both the server and client sides. The client will accept the following commands:
+REQ-Request
+UPL-Upload
+DEL-Delete
+MKD-Make Directory
+RMD-Remove Directory
+CHD-Change Directory
+LIS-List
+XIT-Exit
+
+After entering a command to the client side, follow the instructions on the client side to complete the task.

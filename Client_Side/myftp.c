@@ -494,6 +494,7 @@ int main(int argc, char * argv[]){
 				perror("Clien send error!");
 				exit(1);
 			}
+                        char dir_name[MAX_LINE];
 			printf("Please enter the directory name: ");
 			fgets(dir_name, sizeof(dir_name), stdin);
 			strtok(dir_name, "\n");

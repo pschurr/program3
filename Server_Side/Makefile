@@ -4,4 +4,4 @@ myftpd: myftpd.c
 	gcc myftpd.c -o myftpd -lmhash
 
 clean:
-	rm *.o myftpd
+	rm  myftpd

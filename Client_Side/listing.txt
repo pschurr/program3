@@ -1,0 +1,9 @@
+Makefile
+MediumFile.pdf
+SmallFile.txt
+myftpd
+upload.txt
+myftpd.c~
+listing.txt
+New_dir
+myftpd.c
