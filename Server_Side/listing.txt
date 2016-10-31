@@ -1,4 +1,3 @@
-.SmallFile.txt.swp
 Makefile
 MediumFile.pdf
 New_dir
@@ -8,4 +7,5 @@ listing.txt
 myftpd
 myftpd.c~
 upload.txt
+LargeFile.mp4
 myftpd.c

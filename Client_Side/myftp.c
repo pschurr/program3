@@ -105,7 +105,6 @@ int main(int argc, char * argv[]){
 
 			if ( file_size >= 0){ // Server returns a negative file length if file doesn't exist on server
 				unsigned char hash[16];
-				char temp_hash[16];
 				int ret = 0;
 				int t =0;
 				/*while(ret < 16){
@@ -121,53 +120,74 @@ int main(int argc, char * argv[]){
 					memset(temp_hash,0,strlen(temp_hash));
 				}*/
 				ret = recv(s,hash, 16, 0);
-				printf("%i\n",ret);
 				if(ret<0){//Get that hash
                                 	perror("client receive error: Error receiving file hash!");
                                 	//exit(1);
                                 	continue;
                         	}
-				char content[file_size];
-				memset(content,0,strlen(content));
-				char temp[file_size];
+				//fp = fopen(file_name, "w");
+				char content[1000];
+				//memset(content,0,strlen(content));
+				//char temp[1000];
 				ret = 0;
 				t = 0;
-				gettimeofday(&t1, NULL);
+				printf("Entering loop");
+				fp = fopen(file_name, "w");
+	
 				while(ret < file_size){
 		
-					t = recv(s,temp,file_size,0);
+					t = recv(s,content,1000,0);
+					//printf("%s\n",strlen(content));
 					if (t <= 0){
 						ret = t;
 						break;
 					} 
+					printf("%i\n",ret);
 					ret = ret + t;
-					strcat(content, temp);
-					if(ret < file_size) content[t]=0;
-					memset(temp,0,strlen(temp));
+					content[t]='\0';
+					fwrite(content, t,1,fp);
+					//written+=fprintf(fp,"%s",content,t);
+					fflush(fp);
+					//strcat(content, temp);
+				//	memset(content,0,strlen(content));
 				}
-				gettimeofday(&t2, NULL);
-				elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
-    				elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000000.0;
+				printf("Here %i\n",ret);
+				fclose(fp);
+				//gettimeofday(&t2, NULL);
+				//elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
+    				//elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000000.0;
 					
 				if(ret<0){
 					perror("client recieve error: Error receiving file content!");
 					//exit(1);
 					continue;
 				}
-				fp = fopen(file_name, "w");
-				fprintf(fp, content);
-				fclose(fp);
+				//fp = fopen(file_name, "w");
+				//fprintf(fp, content);
+				//fclose(fp);
 				fp = fopen(file_name, "r");
-				memset(content,0,strlen(content));
+				unsigned char temp[1000];
+				//unsigned char serverHash[16];
+				//memset(temp,0,strlen(temp));
 				td = mhash_init(MHASH_MD5);
 				if (td == MHASH_FAILED) return 1; 
-				fread(content, sizeof(char), file_size, fp);
+				int bytes = 0;
+				while ((bytes=fread(&temp, sizeof(char),1000, fp) != 0))
+    				{
+					
+      					mhash(td, &temp, 1000);
+    				}
+
+  				//mhash_deinit(td, serverHash);
+				//unsigned char *serverHash;
+				//mhash_deinit(td,serverHash);
+		//		fread(temp, sizeof(char),1000, fp);
 				fclose(fp);
-				mhash(td,&content , 1);
+				//mhash(td,&temp , 1);
 				unsigned char *serverHash = mhash_end(td);
 				hash[16] = '\0';
-				//printf("%s, %i\n", hash, strlen(hash));
-				//printf("%s, %i\n", serverHash, strlen(serverHash));
+				printf("%s, %i\n", hash, strlen(hash));
+				printf("%s, %i\n", serverHash, strlen(serverHash));
 				if(strcmp(hash,serverHash) == 0){
 					printf("Successfully received %s.\n",file_name);
 					printf("%i bytes transferred in %lf seconds: %lf Megabytes/sec\n", file_size, elapsedTime, (file_size/1000000)/elapsedTime);
@@ -357,7 +377,7 @@ int main(int argc, char * argv[]){
 			int file_size = atoi(size);
 			ret = 0;
 			int t = 0;
-			char content[file_size];
+			char content[file_size+1];
 			char temp[file_size];
 			while(ret < file_size){
                                 t = recv(s,temp,file_size,0);
@@ -371,6 +391,7 @@ int main(int argc, char * argv[]){
                                 memset(temp,0,strlen(temp));
 	
 			}
+			content[file_size]='\0';
 			if(ret<0){
 				perror("client receive error: Error receiving file listing!");
 				continue;

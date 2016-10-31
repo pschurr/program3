@@ -128,20 +128,37 @@ int main(int argc, char * argv[]){
                         }
 			//Server computes MD5 hash of the file and sends it to client as a 16-byte string. 
 			unsigned char *hash;
-			char content[size];
-			fread(content, sizeof(char),size,fp);
-			fclose(fp);
+			char content[1000];
+			int read = 0;
 			td = mhash_init(MHASH_MD5);
                         if (td == MHASH_FAILED) return 1;
-                        mhash(td,&content , 1);
+			int bytes = 0;
+			while ((bytes=fread(&content, sizeof(char),1000, fp) != 0)){
+				mhash(td,&content,1000);
+			}
+                        //mhash(td,&content , 1);
+		//	mhash_deinit(td,hash);
 			hash = mhash_end(td);
+			hash[16]='\0';
 			len = strlen(hash);
+			printf("%s\n",hash);
                         ret = send(new_s1, hash, len, 0);
+			printf("Here\n");
                         if(ret == -1){
                                 perror("server send error: Error sending hash");
                         	continue;
                         }
-                        ret = send(new_s1, content, size, 0);
+			printf("hash sent");
+			while (read<size){
+				int bytes=fread(content,sizeof(char),1000,fp);
+				read+=bytes;
+                        	ret = send(new_s1, content,bytes , 0);
+				if(ret == -1){
+					break;
+				}
+				memset(content,0,strlen(content));
+			}
+
                         if(ret == -1){
                                 perror("server send error: Error sending file content");
                                 continue;
