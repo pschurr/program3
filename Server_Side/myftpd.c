@@ -224,7 +224,6 @@ int main(int argc, char * argv[]){
                                         }
                                         ret = ret + t;
                                         content[t]='\0';
-					printf("%s\n",content);
                                         fwrite(content, t,1,fp);
                                         fflush(fp);
                                 }

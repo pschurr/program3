@@ -1,3 +1,8 @@
+//Rob Freedy, Nicholas Haydel, Patrick Schurr
+//Computer Networks
+//Assignment 3
+//NetIDs: nhaydel, pschurr, rfreedy
+//myftpd.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

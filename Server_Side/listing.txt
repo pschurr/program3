@@ -1,10 +1,10 @@
 myftpd
-.__afs5247
+SmallFile.txt
 Makefile
 LargeFile.mp4
 New_dir
-SmallFile.txt
+.__afs08A8
 MediumFile.pdf
 listing.txt
-myftpd.c~
 myftpd.c
+myftpd.c~
