@@ -1,11 +1,7 @@
+myftpd
 Makefile
-MediumFile.pdf
 New_dir
 SmallFile.txt
-deleteme.txt
 listing.txt
-myftpd
-myftpd.c~
-upload.txt
-LargeFile.mp4
 myftpd.c
+myftpd.c~

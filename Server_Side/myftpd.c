@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <sys/time.h>
 #include <mhash.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -22,6 +23,8 @@ int main(int argc, char * argv[]){
 	struct sockaddr_in sin;
 	char buf[MAX_COMMAND];
 	int len;
+	struct timeval tv, tv2;
+	double elapsed_time;
 	int s, new_s1, new_s2, new_s3;
 	int opt;
 	int server_port;
@@ -141,14 +144,14 @@ int main(int argc, char * argv[]){
 			hash = mhash_end(td);
 			hash[16]='\0';
 			len = strlen(hash);
-			printf("%s\n",hash);
+		//	printf("%s\n",hash);
                         ret = send(new_s1, hash, len, 0);
-			printf("Here\n");
                         if(ret == -1){
                                 perror("server send error: Error sending hash");
                         	continue;
                         }
-			printf("hash sent");
+			fp = fopen(file_name,"r");
+			memset(content,0,strlen(content));
 			while (read<size){
 				int bytes=fread(content,sizeof(char),1000,fp);
 				read+=bytes;
@@ -158,7 +161,7 @@ int main(int argc, char * argv[]){
 				}
 				memset(content,0,strlen(content));
 			}
-
+			fclose(fp);
                         if(ret == -1){
                                 perror("server send error: Error sending file content");
                                 continue;
@@ -206,51 +209,62 @@ int main(int argc, char * argv[]){
                                 }
 
 				//Receiving File
-				char content[file_size];
+				char content[1000];
                                 memset(content,0,strlen(content));
-                                char temp[file_size];
                                 ret = 0;
                                 int t = 0;
-                                while(ret < file_size){
+				fp = fopen(file_name, "w");
+                                gettimeofday(&tv, NULL);
+				while(ret < file_size){
 
-                                        t = recv(new_s1,temp,file_size,0);
+                                        t = recv(new_s1,content,1000,0);
                                         if (t <= 0){
                                                 ret = t;
                                                 break;
                                         }
                                         ret = ret + t;
-                                        strcat(content, temp);
-					printf("%s\n",temp);
-                                        if(ret < file_size) content[t]=0;
-                                        memset(temp,0,strlen(temp));
+                                        content[t]='\0';
+                                        fwrite(content, t,1,fp);
+                                        //written+=fprintf(fp,"%s",content,t);
+                                        fflush(fp);
+                                        //memset(content,0,strlen(content));
                                 }
+                                gettimeofday(&tv2, NULL);
+                                elapsed_time = ((tv2.tv_sec*1000000+tv2.tv_usec) - (tv.tv_sec*1000000+tv.tv_usec));
+                                elapsed_time = elapsed_time/1000000.0;
+
 				if(ret<0){
 					perror("server recieve error: Error receiving file content!");
 					continue;
 				}
-				printf("%s\n",content);
 
 				//Writing file and checking the hash
-				fp = fopen(file_name, "w");
-				fprintf(fp, content);
 				fclose(fp);
 				td = mhash_init(MHASH_MD5);
 				if (td == MHASH_FAILED) return 1; 
 				fp = fopen(file_name,"r");
-				fread(content, sizeof(char), file_size, fp);
+				unsigned char temp[1000];
+                                int bytes = 0;
+                                while ((bytes=fread(&temp, sizeof(char),1000, fp) != 0))
+                                {
+
+                                        mhash(td, &temp, 1000);
+                                }
 				fclose(fp);
-				mhash(td,&content , 1);
+				
 				unsigned char * clientHash = mhash_end(td); 
 				hash[16] = '\0';
+				char time[10];
+                        	snprintf(time, 10, "%lf", elapsed_time);
 				if(strcmp(clientHash, hash) == 0){
-					printf("Successfully received %s.\n",file_name);
+					ret = send(new_s1,time,10,0);	
 				}
 				else {
-					printf("Failed to receive %s. \n", file_name);
+					ret = send(new_s1,"-1",2,0);	
 				}
 
 			} else {
-				printf("Failed to received %s.\n", file_name);
+				
 			}
 
 		}else if(strcmp("LIS", buf) == 0){
@@ -358,6 +372,7 @@ int main(int argc, char * argv[]){
 				}
 				char confirm[3];
 				ret = recv(new_s1, confirm, 3,0);
+				confirm[3]='\0';
 	                        if(ret == 0) continue; // Client has closed connection continue
                         	else if(ret < 0){
                                 	perror("server receive error: Error receiving deletion confirmation!");
@@ -473,10 +488,8 @@ int main(int argc, char * argv[]){
 			ret = recv(new_s1, confirmation_string, 2, 0);
 			int confirm_delete = atoi(confirmation_string);
 			if(confirm_delete == -1) continue;
-			printf("%s\n", confirmation_string);	
 			//Actually deleting the file
 			int remove_check = remove(file_name);
-			printf("%i\n",remove_check);
 			if(remove_check == 0) {
 				ret = send(new_s1, "1",2,0);
 				if(ret == -1){

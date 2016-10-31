@@ -17,8 +17,8 @@ int main(int argc, char * argv[]){
 	char *host;
 	char buf[MAX_LINE];
 	char ack[MAX_LINE];
-	struct timeval t1, t2;
-        double elapsedTime;
+	struct timeval tv,tv2;
+        double elapsed_time;
 	int s, ret, len, new_s1;
 	int server_port;
 	char command[MAX_LINE];
@@ -101,74 +101,48 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 			int file_size = atoi(size);
-			printf("%i\n", file_size);
 
 			if ( file_size >= 0){ // Server returns a negative file length if file doesn't exist on server
 				unsigned char hash[16];
 				int ret = 0;
 				int t =0;
-				/*while(ret < 16){
-					t = recv(s, temp_hash, 16, 0);
-					printf("%i\n",t);
-					if(t<= 0){
-						ret = t;
-						break;
-					} 
-					ret = ret + t;
-					strcat(hash, temp_hash);
-					if (ret < 16) hash[t] = 0;
-					memset(temp_hash,0,strlen(temp_hash));
-				}*/
 				ret = recv(s,hash, 16, 0);
+				hash[16]='\0';
 				if(ret<0){//Get that hash
                                 	perror("client receive error: Error receiving file hash!");
                                 	//exit(1);
                                 	continue;
                         	}
-				//fp = fopen(file_name, "w");
+				fp = fopen(file_name, "w");
+				fflush(fp);
 				char content[1000];
-				//memset(content,0,strlen(content));
-				//char temp[1000];
 				ret = 0;
 				t = 0;
-				printf("Entering loop");
-				fp = fopen(file_name, "w");
-	
+				gettimeofday(&tv, NULL);
 				while(ret < file_size){
 		
 					t = recv(s,content,1000,0);
-					//printf("%s\n",strlen(content));
-					if (t <= 0){
+					if (t < 0){
 						ret = t;
 						break;
 					} 
-					printf("%i\n",ret);
 					ret = ret + t;
 					content[t]='\0';
 					fwrite(content, t,1,fp);
-					//written+=fprintf(fp,"%s",content,t);
 					fflush(fp);
-					//strcat(content, temp);
-				//	memset(content,0,strlen(content));
 				}
-				printf("Here %i\n",ret);
+                                gettimeofday(&tv2, NULL);
+                                elapsed_time = ((tv2.tv_sec*1000000+tv2.tv_usec) - (tv.tv_sec*1000000+tv.tv_usec));
+				elapsed_time = elapsed_time/1000000.0;
 				fclose(fp);
-				//gettimeofday(&t2, NULL);
-				//elapsedTime = (t2.tv_sec - t1.tv_sec);      // sec to ms
-    				//elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000000.0;
 					
 				if(ret<0){
 					perror("client recieve error: Error receiving file content!");
 					//exit(1);
 					continue;
 				}
-				//fp = fopen(file_name, "w");
-				//fprintf(fp, content);
-				//fclose(fp);
 				fp = fopen(file_name, "r");
 				unsigned char temp[1000];
-				//unsigned char serverHash[16];
-				//memset(temp,0,strlen(temp));
 				td = mhash_init(MHASH_MD5);
 				if (td == MHASH_FAILED) return 1; 
 				int bytes = 0;
@@ -177,20 +151,11 @@ int main(int argc, char * argv[]){
 					
       					mhash(td, &temp, 1000);
     				}
-
-  				//mhash_deinit(td, serverHash);
-				//unsigned char *serverHash;
-				//mhash_deinit(td,serverHash);
-		//		fread(temp, sizeof(char),1000, fp);
 				fclose(fp);
-				//mhash(td,&temp , 1);
 				unsigned char *serverHash = mhash_end(td);
 				hash[16] = '\0';
-				printf("%s, %i\n", hash, strlen(hash));
-				printf("%s, %i\n", serverHash, strlen(serverHash));
 				if(strcmp(hash,serverHash) == 0){
-					printf("Successfully received %s.\n",file_name);
-					printf("%i bytes transferred in %lf seconds: %lf Megabytes/sec\n", file_size, elapsedTime, (file_size/1000000)/elapsedTime);
+					printf("%i bytes transferred in %lf seconds: %lf Megabytes/sec\n", file_size, elapsed_time,(file_size/(elapsed_time*1000000)));
 					printf("File MD5sum: ");
 					int i;
 					for (i =0;i<16;i++) printf("%0x", hash[i]);
@@ -252,6 +217,7 @@ int main(int argc, char * argv[]){
 
                                 continue;
 			}
+			
 
 			// client send 32 bit value of file size
 			fseek(fp, 0L, SEEK_END);
@@ -264,27 +230,61 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 			unsigned char *hash;
-                        char content[size];
-                        fread(content, sizeof(char),size,fp);
-                        fclose(fp);
+                        char content[1000];
+			fclose(fp);
+			fp = fopen(file_name,"r");
                         td = mhash_init(MHASH_MD5);
                         if (td == MHASH_FAILED) return 1;
-                        mhash(td,&content , 1);
+                        int bytes = 0;
+                        while ((bytes=fread(&content, sizeof(char),1000, fp) != 0)){
+                                mhash(td,&content,1000);
+                        }
+
                         hash = mhash_end(td);
+                        hash[16]='\0';
                         len = strlen(hash);
 			ret = send(s,hash,len,0);
                         if(ret==-1){
                                 perror("Client send error: Error sending hash");
 				continue;
 			}
-			printf("%s\n", content);
-			ret = send(s,content,size,0);
-			printf("%i, %i\n",ret,size);	
+                        fp = fopen(file_name,"r");
+                        memset(content,0,strlen(content));
+			int read = 0;
+                        while (read<size){
+                                int bytes=fread(content,sizeof(char),1000,fp);
+                                read+=bytes;
+                                ret = send(s, content,bytes , 0);
+                                if(ret == -1){
+                                        break;
+                                }
+                                memset(content,0,strlen(content));
+                        }
+                        fclose(fp);
 			if(ret==-1){
                                 perror("Client send error: Error sending file");
 				continue;
 
 			}
+                        char time[10];
+                        ret = recv(s,time,10,0);
+                        if (ret==-1){
+				perror("Client receive error: Error receiving throughput info");
+				continue;
+			}
+			double elapsed = atof(time);
+			if (elapsed == -1.0){
+				printf("Error: upload unsuccessful.\n");
+			}
+			else{
+                                        printf("%i bytes transferred in %lf seconds: %lf Megabytes/sec\n", size, elapsed,(size/(elapsed*1000000)));
+                                        printf("File MD5sum: ");
+                                        int i;
+                                        for (i =0;i<16;i++) printf("%0x", hash[i]);
+                                        printf("\n");
+	
+			}
+
 
 
 
@@ -330,13 +330,13 @@ int main(int argc, char * argv[]){
 				fgets(decision, sizeof(decision)+1, stdin);
 				strtok(decision,"\n");
 				//printf("%s\n",decision);
-				if(strcmp("yes",decision)==0){
+				if(strcmp("YES",decision)==0){
 					if(send(s,"1",len,0)==-1){
 						perror("client send error!"); 
 						exit(1);
 					}
 					break;
-				}else if(strcmp("no",decision) ==0){
+				}else if(strcmp("NO",decision) ==0){
 					if(send(s,"-1",len,0)==-1){
 						perror("client send error!"); 
 						exit(1);
@@ -355,12 +355,11 @@ int main(int argc, char * argv[]){
 			
 			if(did_del<0){ // make sure file exists on server side 
 				printf("Delete was not successful\n");
-				continue;
 			} else{
 				printf("Delete successful\n");
 			} 
 
-			memset(operation,0,strlen(operation));	
+			//memset(operation,0,strlen(operation));	
 		
 		// LIS
 		} else if (strcmp("LIS", operation) == 0) {
@@ -469,23 +468,32 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 			int c = atoi(conf);
-			char affirm[3];
+			char decision[3];
 			if (c > 0){
-				while (strcmp(affirm,"No") != 0 || strcmp(affirm,"Yes")!=0){
-					printf("Do you want to delete %s: ", file_name);
-					fgets(affirm, 4, stdin);
-					strtok(affirm, "\n");
-					printf("%s\n", affirm);
+				int i = 0;
+				while(1){
+					printf("Are you sure you want to delete this file? Enter Yes or No: ");
+					fgets(decision, sizeof(decision)+1, stdin);
+					strtok(decision,"\n");
+				//printf("%s\n",decision);
+					if(strcmp("Yes",decision)==0){
+
+					break;
+					}else if(strcmp("No",decision) ==0){
+						break;	
+					}else{
+						printf("Enter a valid decision\n");
+					}
 				}
-				if (strcmp(affirm,"No") == 0){
+				if (strcmp(decision,"No") == 0){
 					printf("Delete abandoned by the user!\n");
-					if(send(s, affirm, strlen(affirm),0) < 0){
+					if(send(s, decision, strlen(decision),0) < 0){
 						perror("client send error: Error sending deletion confirmation!");
 						continue;
 					}
 				}
 				else {
-					if(send(s, affirm, strlen(affirm),0) < 0){
+					if(send(s, decision, strlen(decision),0) < 0){
 						perror("client send error: Error sending deletion confirmation!");
 						continue;
 					}
@@ -498,9 +506,11 @@ int main(int argc, char * argv[]){
 					int succ = atoi(success);
 					if (succ > 0){
 						printf("Directory deleted\n");
+					
 					}
 					else if(succ < 0){
 						printf("Failed to delete directory\n");
+				
 					}
 				}
 			} 
@@ -508,11 +518,10 @@ int main(int argc, char * argv[]){
 				printf("%s does not exist on server\n", file_name);
 				continue;
 			}
-
 		// CHD
 		} else if(strcmp("CHD",operation) ==0){
 			if(send(s,operation,len,0) ==-1){
-				perror("Clien send error!");
+				perror("Client send error!");
 				exit(1);
 			}
                         char dir_name[MAX_LINE];
@@ -561,25 +570,7 @@ int main(int argc, char * argv[]){
 			close(s);
 			printf("Session has been closed.\n");
 			return 0;	
-		} /*else if (strcmp("DEL", operation) == 0) {
-			if(send(s,operation,len,0)==-1){
-				perror("client send error!"); 
-				exit(1);	
-			}	
 		}
-		
-	
-		if (!strncmp(buf, "Exit",4)){
- 			printf("Good Bye!\n");
- 			break;
-		}
-		
-		
-		len = strlen(buf) + 1;
- 		if(send(s, buf, len, 0)==-1){
-			perror("client send error!"); 
-			exit(1);	
-		}*/
 	}
 
 	close(s);
