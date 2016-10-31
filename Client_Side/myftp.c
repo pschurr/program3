@@ -91,7 +91,7 @@ int main(int argc, char * argv[]){
 			strtok(file_name, "\n");
 			int name_len = strlen(file_name)+1;
 			char len_str[10];
-			snprintf(len_str, 10, "%d", name_len);
+			snprintf(len_str, 10, "%d", name_len);//send file name and length as strings.
 			if(send(s, len_str, strlen(len_str)+1, 0)==-1){
 				perror("client send error: Error sending file name length!");
 				//exit(1);
@@ -117,18 +117,23 @@ int main(int argc, char * argv[]){
 				int t =0;
 				ret = recv(s,hash, 16, 0);
 				hash[16]='\0';
-				if(ret<0){//Get that hash
+				if(ret<0){//Check if the proper hash was received.
                                 	perror("client receive error: Error receiving file hash!");
                                 	//exit(1);
                                 	continue;
                         	}
 				fp = fopen(file_name, "w");
+                                if(fp==NULL){
+                                        printf("Error opening file\n");
+                                        exit(1);
+                                }
+
 				fflush(fp);
 				char content[1000];
 				ret = 0;
 				t = 0;
 				gettimeofday(&tv, NULL);
-				while(ret < file_size){
+				while(ret < file_size){//Receive file content
 		
 					t = recv(s,content,1000,0);
 					if (t < 0){
@@ -151,11 +156,15 @@ int main(int argc, char * argv[]){
 					continue;
 				}
 				fp = fopen(file_name, "r");
+				if(fp==NULL){
+					printf("Error opening file\n");
+					exit(1);
+				}
 				unsigned char temp[1000];
 				td = mhash_init(MHASH_MD5);
 				if (td == MHASH_FAILED) return 1; 
 				int bytes = 0;
-				while ((bytes=fread(&temp, sizeof(char),1000, fp) != 0))
+				while ((bytes=fread(&temp, sizeof(char),1000, fp) != 0))//Calculate the hash of the whole file.
     				{
 					
       					mhash(td, &temp, 1000);
@@ -258,6 +267,11 @@ int main(int argc, char * argv[]){
 				continue;
 			}
                         fp = fopen(file_name,"r");
+                        if(fp==NULL){
+                               printf("Error opening file\n");
+                               exit(1);
+                        }
+
                         memset(content,0,strlen(content));
 			int read = 0;
                         while (read<size){
@@ -276,7 +290,7 @@ int main(int argc, char * argv[]){
 
 			}
                         char time[10];
-                        ret = recv(s,time,10,0);
+                        ret = recv(s,time,10,0);//Receive the elapsed time from server.
                         if (ret==-1){
 				perror("Client receive error: Error receiving throughput info");
 				continue;
@@ -305,7 +319,7 @@ int main(int argc, char * argv[]){
 			}	
 			
 			printf("Please enter the file to delete: ");
-                        fgets(file_name, sizeof(file_name), stdin);
+                        fgets(file_name, sizeof(file_name), stdin);//Send file info to server
                         strtok(file_name, "\n");
                         int name_len = strlen(file_name)+1;
                         char len_str[10];
@@ -362,7 +376,7 @@ int main(int argc, char * argv[]){
 			}
 			int did_del= atoi(size);
 			
-			if(did_del<0){ // make sure file exists on server side 
+			if(did_del<0){ // make sure file was deleted.
 				printf("Delete was not successful\n");
 			} else{
 				printf("Delete successful\n");
@@ -422,7 +436,7 @@ int main(int argc, char * argv[]){
                         char len_str[10];
                         snprintf(len_str, 10, "%d", name_len);
 				
-			if(send(s, len_str, strlen(len_str)+1, 0)==-1){
+			if(send(s, len_str, strlen(len_str)+1, 0)==-1){//Send the directory name and length of name
 				perror("client send error: Error sending directory name length!");
                                 continue;
                         }
@@ -432,7 +446,7 @@ int main(int argc, char * argv[]){
                                 continue;
                         }
 			char success[10];
-			if(recv(s, success, 10,0)==-1){
+			if(recv(s, success, 10,0)==-1){//Check success val;
 				perror("Client receive error: Error receiving server confirmation!");
 				continue;
 			}
@@ -484,8 +498,7 @@ int main(int argc, char * argv[]){
 					printf("Are you sure you want to delete this file? Enter Yes or No: ");
 					fgets(decision, sizeof(decision)+1, stdin);
 					strtok(decision,"\n");
-				//printf("%s\n",decision);
-					decision[3]='\0';
+					decision[3]='\0';//Ensure only the confirmation is sent.
 					if(strcmp("Yes",decision)==0){
 
 					break;
