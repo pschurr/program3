@@ -6,6 +6,6 @@ SmallFile.txt
 deleteme.txt
 listing.txt
 myftpd
-myftpd.c
 myftpd.c~
 upload.txt
+myftpd.c

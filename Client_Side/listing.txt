@@ -1,9 +1,11 @@
+.SmallFile.txt.swp
 Makefile
 MediumFile.pdf
-SmallFile.txt
-myftpd
-upload.txt
-myftpd.c~
-listing.txt
 New_dir
+SmallFile.txt
+deleteme.txt
+listing.txt
+myftpd
 myftpd.c
+myftpd.c~
+upload.txt

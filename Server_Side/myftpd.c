@@ -1,3 +1,9 @@
+//Rob Freedy, Nicholas Haydel, Patrick Schurr
+//Computer Networks
+//Assignment 3
+//NetIDs: nhaydel, pschurr, rfreedy
+//myftpd.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,7 +70,7 @@ int main(int argc, char * argv[]){
         }
 	int ret = -4;
 	while(1){
-		//bzero((char *)&sin, sizeof(sin));
+		//Resetting the buf string to accept new request from the client
 		memset(buf, 0,strlen(buf));	
 		if (new_s1!=-1){
 			printf("Prompting for client command.\n");
@@ -82,19 +88,6 @@ int main(int argc, char * argv[]){
 			exit(1);
 		}
 		if (strcmp("REQ", buf) == 0){
-			// I REMOVED THE CURRENT SEND AND ACCEPT BECAUSE THE ASSIGNMENT HAS BEEN UPDATED (SEE PIAZZA) AND ACCEPT IS ONLY FOR ACCEPTING CONNECTIONS)
-			//Sending a prompt back to the client to enter a file name for the request
-			//char *file_message = "Please enter the name of the file that you would like to request";
-			//if(send(s, file_message, sizeof(file_message), 0)==-1){ 
-			//	perror("server send file prompt error!"); 
-			//	exit(1);
-			//}
- 
-			//accepting the name of the file
-			//if((new_s2 = accept(s,(struct sockaddr *)&sin, &len))<0){
-			//	perror("Server Received Error!");
-			//	exit(1);
-			//}
 			char name_len[10];
 			//Server receiving the length of the file in a short int as well as the file name
 			ret = recv(new_s1, name_len, 10,0);
@@ -111,28 +104,23 @@ int main(int argc, char * argv[]){
                                 perror("server receive error: Error receiving file name!");
                                 exit(1);
                         }
+			//Checking to see if the file exists. If it does, continue with request. If not, send the client a -1
 			fp = fopen(file_name, "r");
 			if (fp == NULL){
 				ret = send(new_s1, "-1", 2,0);
-			//	if(errno == SIGPIPE){//Client has closed connection
-			//		continue;
-			//	}
 				if(ret == -1){
 					perror("server send error: Error sending file size");
 				}
 
 				continue;
 			}
+			//Getting the size of the file and sending it to the client
 			fseek(fp, 0L, SEEK_END);
 			int size = ftell(fp);
 			rewind(fp);
 			char file_size[10];
 			snprintf(file_size, 10, "%d", size);
-			//printf("%i, %s \n",size,file_size);
 			ret = send(new_s1, file_size, 10, 0);
-                        //if(errno == SIGPIPE){//Client has closed connection
-                          //      continue;
-                        //}
                         if(ret == -1){
                                 perror("server send error: Error sending file size");
                                 //exit(1);
@@ -149,24 +137,15 @@ int main(int argc, char * argv[]){
 			hash = mhash_end(td);
 			len = strlen(hash);
                         ret = send(new_s1, hash, len, 0);
-                        //if(errno == SIGPIPE){//Client has closed connection
-                          //      continue;
-                        //}
                         if(ret == -1){
                                 perror("server send error: Error sending hash");
-                        //        exit(1);
                         	continue;
                         }
                         ret = send(new_s1, content, size, 0);
-                        //if(errno == SIGPIPE){//Client has closed connection
-                          //      continue;
-                        //}
                         if(ret == -1){
                                 perror("server send error: Error sending file content");
                                 continue;
                         }
-
-			//Server sends the file to client. 
 
 		}else if(strcmp("UPL", buf) == 0){
 			char name_len[10];
@@ -234,16 +213,6 @@ int main(int argc, char * argv[]){
 				}
 				printf("%s\n",content);
 
-				//Calculate Throughput
-				
-
-				//Receiving Hash
-			/*	unsigned char hash[16];
-				if(recv(new_s1,hash, 16, 0)<0){//Get that hash
-                                	perror("server receive error: Error receiving file hash!");
-                                      	continue;
-				}*/
-
 				//Writing file and checking the hash
 				fp = fopen(file_name, "w");
 				fprintf(fp, content);
@@ -268,11 +237,13 @@ int main(int argc, char * argv[]){
 			}
 
 		}else if(strcmp("LIS", buf) == 0){
+			//Opening the directory and listing.txt
 			FILE * fp;
 			fp = fopen("listing.txt", "w");
-			DIR           *d;
+			DIR *d;
   			struct dirent *dir;
   			d = opendir(".");
+			//If the directory succesfully opens, loop through the directory and print file names to listing.txt
   			if (d){
     				while ((dir = readdir(d)) != NULL) {
 					if ((strcmp(dir->d_name,".") != 0) && (strcmp(dir->d_name,"..")!=0)){
@@ -282,6 +253,7 @@ int main(int argc, char * argv[]){
 				fclose(fp);
     				closedir(d);
   			}
+			//Sending the contents of listing.txt to the client
 			fp = fopen("listing.txt", "r");
                         fseek(fp, 0L, SEEK_END);
                         int size = ftell(fp);
@@ -291,14 +263,11 @@ int main(int argc, char * argv[]){
                         fclose(fp);
                         char file_size[10];
                         snprintf(file_size, 10, "%d", size);
-                        //printf("%i, %s \n",size,file_size);
                         ret = send(new_s1, file_size, 10, 0);
                         if(ret == -1){
                                 perror("server send error: Error sending file size");
-                                //exit(1);
                                 continue;
                         }
-			printf("%s\n",content);
                         ret = send(new_s1, content, size, 0);
                         if(ret == -1){
                                 perror("server send error: Error sending file content");
@@ -324,6 +293,9 @@ int main(int argc, char * argv[]){
                                 perror("server receive error: Error receiving file name!");
                                 exit(1);
                         }
+			//Creating the new directory. If the directory already exists, send -2. 
+			//If the server was created successfully, send 10000. 
+			//If the server could not be created successfuly, send -1
 			DIR* d = opendir(dir_name);
 			if (d) {
 				if(send(new_s1, "-2",2 , 0)<0){
@@ -363,8 +335,9 @@ int main(int argc, char * argv[]){
                         }
 			DIR* d = opendir(dir_name);
 			if (d) {
+				//Sending a 1 to the client to show that the directory exists
 				if(send(new_s1, "1",2 , 0)<0){
-					perror("server send error: Error sending directory already exists!");
+					perror("server send error: Error sending directory does exist!");
 				}
 				char confirm[3];
 				ret = recv(new_s1, confirm, 3,0);
@@ -375,6 +348,7 @@ int main(int argc, char * argv[]){
                         	}
 				int empty_flag = 0;
 				struct dirent *dir;
+				//Deleting the contents of the directory
 				if (strcmp(confirm, "Yes")==0){
 					while ((dir = readdir(d)) != NULL) {
 						if ((strcmp(dir->d_name,".") != 0) && (strcmp(dir->d_name,"..")!=0)){
@@ -383,6 +357,7 @@ int main(int argc, char * argv[]){
 							break;	
 						}
     					}
+					//Sending the confirmation that the directory was removed or not removed
 					if (empty_flag == 0){
 						int check = rmdir(dir_name);
 						if(!check){
@@ -429,6 +404,9 @@ int main(int argc, char * argv[]){
                                 perror("server receive error: Error receiving file name!");
                                 exit(1);
                         }
+			//Opening the directory. If it exists and is changed correctly send the client 1
+			//If the does not exist, send the client -2.
+			//If the directory could not be successfully changed to, send -1
 			DIR* d = opendir(dir_name);
 			if(d){
 				int check = chdir(dir_name);
@@ -496,19 +474,13 @@ int main(int argc, char * argv[]){
    			}
  
 		}else if(strcmp("XIT", buf) == 0){
+			//closing the client socket and going back to the waiting for client state
 			bzero((char *)&sin, sizeof(sin));
 			close(new_s1);
 			new_s1 = -1;
 		} else {
 			continue;
-			//char *command_error_message = "Please enter a valid command for this client/server";
-			//if(send(s, command_error_message, sizeof(command_error_message), 0)==-1){ 
-			//	perror("server send command error message error!"); 
-			//	exit(1);
-			//}
 		}
 		
-//		close(new_s1);
-//		close(new_s2);
 	}
 }
