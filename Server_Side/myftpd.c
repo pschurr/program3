@@ -224,10 +224,9 @@ int main(int argc, char * argv[]){
                                         }
                                         ret = ret + t;
                                         content[t]='\0';
+					printf("%s\n",content);
                                         fwrite(content, t,1,fp);
-                                        //written+=fprintf(fp,"%s",content,t);
                                         fflush(fp);
-                                        //memset(content,0,strlen(content));
                                 }
                                 gettimeofday(&tv2, NULL);
                                 elapsed_time = ((tv2.tv_sec*1000000+tv2.tv_usec) - (tv.tv_sec*1000000+tv.tv_usec));
